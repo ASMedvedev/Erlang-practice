@@ -29,17 +29,14 @@ init() ->
     	ets:new(cache, [named_table, public, ordered_set]).
 
 insert(Key, Value) ->
-	io:format("insert(Key, Value) in CACHE_SERVER ~n",  []),
-	io:format("Key = ~w~n",  [Key]),
-	io:format("Value = ~w~n",  [Value]),	
-	io:format("Local_time = ~w~n",  [calendar:local_time()]),
 	ets:insert(cache, {Key, Value, calendar:local_time()}).
 
 deleteData(Key) -> 
 	ets:delete(cache, Key).
 
 lookup(Key) ->
-	List = ets:lookup(cache, Key), List.
+	[{ _, Value, _ }] = ets:lookup(cache, Key),
+    	{ok, Value}.
 
 parseDate(Date) ->
 	{ok,Bin} = tempo:parse(<<"%Y/%d/%m %H:%M:%M">>, Date, datetime),
@@ -47,24 +44,16 @@ parseDate(Date) ->
 	
 
 
-lookup_by_date(DateTimeFrom, DateTimeTo) -> 
-	io:format("lookup_by_date in CACHE_SERVER ~n",  []),
-	%io:format("DateTimeFrom = ~w~n",  [DateTimeFrom]),
-	%io:format("DateTimeTo = ~w~n",  [DateTimeTo]),
-
-	io:format("date after parsing in CACHE_SERVER ~n",  []),
-	io:format("DateTimeFrom = ~w~n",  [parseDate(DateTimeFrom)]),
-	io:format("DateTimeTo = ~w~n",  [parseDate(DateTimeTo)]),
-	
+lookup_by_date(DateTimeFrom, DateTimeTo) -> 	
 	Key = ets:first(cache),	
 	List = lists:reverse(compare_delete(Key,parseDate(DateTimeFrom),parseDate(DateTimeTo),false)),
-	List.
+	[{K, Value} || [{K, Value, _}] <- List].
+
 
 clear_old_records_loop() -> 
 	TTL = ets:lookup(ttl, ttl),
     	timer:sleep(1000),%sleep 1 sec
-    	[{_, TTL2}] = TTL,
-	%io:format("TTL2 = ~w~n",  [TTL2]),	
+    	[{_, TTL2}] = TTL,	
 	compare_delete(ets:first(cache), {{1970,01,01},{01,01,01}}, calendar:gregorian_seconds_to_datetime 		  	 
 	(calendar:datetime_to_gregorian_seconds(calendar:local_time())-TTL2), true),
 	clear_old_records_loop().
@@ -75,7 +64,6 @@ clear_old_records_loop() ->
 compare_delete(Key,DateTimeFrom,DateTimeTo,Del)-> 
     compare_delete(Key,DateTimeFrom,DateTimeTo,Del,[]).
       compare_delete(Key,DateTimeFrom,DateTimeTo,Del,Acc) ->
-%io:format("Compare_delete in CACHE_SERVER ~n",  []),
 case Key of
 '$end_of_table'->
 	if
@@ -105,7 +93,6 @@ end.
 
 % 			    Gen_Server functions		            =	
 init({ttl, TTL}) ->
-    %io:format("init({ttl, TTL}) in CACHE_SERVER ~n",  []),
     ets:new(cache, [named_table, public, ordered_set]),
     ets:new(ttl, [named_table, public, ordered_set]),
 

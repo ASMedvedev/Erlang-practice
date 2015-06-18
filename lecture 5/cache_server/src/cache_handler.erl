@@ -14,24 +14,14 @@ handle(Req, State) ->
 terminate(_Reason, _Req, _State) ->
 	ok.
 
-
-
-
 parse_req(<<"POST">>, true, Req) ->
-	io:format("parse_req POST ~n",  []),
-	{ok, PostVals, Req2} = cowboy_req:body_qs(Req),
-		
+	{ok, PostVals, Req2} = cowboy_req:body_qs(Req),		
 		[{BinJson, true}] = PostVals,
-		io:format("Json = jsx:decode(BinJson) ~n",  []),
-		io:format("BinJson = ~w~n",  [BinJson]),
 		Json = jsx:decode(BinJson),
-		io:format("Action = proplists:get_value ~n",  []),
 		Action = proplists:get_value(<<"action">>, Json),
-		io:format("Res = parse_command(Action, Json) ~n",  []),
 		Res = parse_command(Action, Json),
-		
-		cowboy_req:reply(200, [{<<"content-type">>, <<"text/plain; charset=utf-8">>}], 
-		term_to_binary(Res), Req2);
+		cowboy_req:reply(200, [{<<"content-type">>, <<"application/json; charset=utf-8">>}],jsx:encode(Res), Req2);
+
 
 parse_req(<<"POST">>, false, Req) ->
 	io:format("parse_req POST Missing body ~n",  []),
@@ -42,11 +32,8 @@ parse_req(_, _, Req) ->
 	cowboy_req:reply(405, Req).
 
 parse_command(<<"insert">>, Json) ->
-	%io:format("parse_command insert ~n",  []),
 	Key = proplists:get_value(<<"key">>, Json),
-	%io:format("Key = ~w~n",  [Key]),
 	Value = proplists:get_value(<<"value">>, Json),
-	%io:format("Value = ~w~n",  [Value]),
 	cache_server:insert(Key, Value);
 
 parse_command(<<"lookup">>, Json) ->
